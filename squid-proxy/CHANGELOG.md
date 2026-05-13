@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+- **Fix**: Resolved issue where expired certificates were not refreshed at startup.
+- **Fix**: Reordered renewal monitor loop to perform an immediate check upon startup.
+
 ## 1.0.4
 - **Feature**: Added background monitor for automated Let's Encrypt renewal with zero-downtime configuration reloads.
 - **Improved**: Added multi-architecture support for amd64, aarch64, armhf, and armv7.

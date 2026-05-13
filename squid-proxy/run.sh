@@ -42,7 +42,10 @@ if [ "$ENABLE_HTTPS" = "true" ]; then
                 FOUND_PATH=$(grep -A 12 "Certificate Name: ${PROXY_DOMAIN}" /tmp/certs.txt 2>/dev/null | grep "Certificate Path:" | sed 's/.*Certificate Path: //' | xargs || true)
                 
                 if [ -n "$FOUND_PATH" ] && [ -r "$FOUND_PATH" ]; then
-                    bashio::log.info "Found valid Let's Encrypt certificate at: $FOUND_PATH"
+                    bashio::log.info "Found existing Let's Encrypt certificate. Ensuring it is up to date..."
+                    # Try to renew before starting (handles cases where add-on was off for a long time)
+                    certbot renew ${CB_OPTS} --non-interactive --quiet --preferred-challenges http || true
+                    
                     LE_CERT_FILE="$FOUND_PATH"
                     LE_KEY_FILE=$(dirname "$FOUND_PATH")/privkey.pem
                 else
@@ -296,8 +299,6 @@ if [ "$USE_LETSENCRYPT" = "true" ]; then
     bashio::log.info "Starting Let's Encrypt renewal monitor..."
     (
         while true; do
-            # Wait 12 hours between checks
-            sleep 43200
             bashio::log.info "Running scheduled certificate renewal check..."
             # Renew if needed and reload Squid if a new cert is deployed
             certbot renew ${CB_OPTS} \
@@ -305,6 +306,9 @@ if [ "$USE_LETSENCRYPT" = "true" ]; then
                 --quiet \
                 --preferred-challenges http \
                 --deploy-hook "squid -k reconfigure -f /tmp/squid.conf"
+            
+            # Wait 12 hours between checks
+            sleep 43200
         done
     ) &
 fi
