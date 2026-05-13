@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.9
+- **Improved**: Switched to Pip-installed Certbot to ensure the add-on runs the absolute latest version available.
+
 ## 1.0.8
 - **Fix**: Disabled Certbot's random sleep on renewal, which was causing the add-on to hang and be killed by the Home Assistant watchdog.
 
