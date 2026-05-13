@@ -172,6 +172,13 @@ CACHE_LOG="cache_log /var/log/squid/cache.log"
 echo "Generating Squid configuration..."
 NEW_SQUID_CONF="/tmp/squid.conf"
 
+# Build Dynamic Port Security
+# Port 80 is only allowed if HTTP proxying is enabled or Let's Encrypt is used.
+SAFE_PORTS_LINES="acl Safe_ports port 443"
+if [ "$ENABLE_HTTP" = "true" ] || [ "$USE_LETSENCRYPT" = "true" ]; then
+    SAFE_PORTS_LINES="${SAFE_PORTS_LINES}\nacl Safe_ports port 80"
+fi
+
 # Prepare Caching Configuration (Calculated before writing file)
 CACHE_CONFIG_LINES=""
 # Caching Configuration
@@ -204,8 +211,10 @@ cache deny all"
 fi
 
 printf "# Squid Proxy Config (Auto-generated)
+# Strict Port Security
+${SAFE_PORTS_LINES}
+
 acl SSL_ports port 443
-acl Safe_ports port 443
 acl CONNECT method CONNECT
 
 # Auth Setup
@@ -221,7 +230,10 @@ acl authenticated proxy_auth REQUIRED
 http_access allow manager localhost
 http_access deny manager
 
+# Deny requests to certain unsafe ports
 http_access deny !Safe_ports
+
+# Deny CONNECT to other than secure SSL ports
 http_access deny CONNECT !SSL_ports
 
 ${NETWORK_ACL_LINES}
@@ -278,6 +290,24 @@ fi
 # Permissions and Dirs
 mkdir -p /var/cache/squid
 chown -R squid:squid /var/cache/squid /var/log/squid
+
+# 7. Let's Encrypt Renewal Monitor (Background)
+if [ "$USE_LETSENCRYPT" = "true" ]; then
+    bashio::log.info "Starting Let's Encrypt renewal monitor..."
+    (
+        while true; do
+            # Wait 12 hours between checks
+            sleep 43200
+            bashio::log.info "Running scheduled certificate renewal check..."
+            # Renew if needed and reload Squid if a new cert is deployed
+            certbot renew ${CB_OPTS} \
+                --non-interactive \
+                --quiet \
+                --preferred-challenges http \
+                --deploy-hook "squid -k reconfigure -f /tmp/squid.conf"
+        done
+    ) &
+fi
 
 # Final initialization and Launch
 echo "----------------------------------------------------"
