@@ -36,26 +36,24 @@ if [ "$ENABLE_HTTPS" = "true" ]; then
                 CB_OPTS="--config-dir /data/letsencrypt --work-dir /data/letsencrypt/work --logs-dir /data/letsencrypt/logs"
                 
                 bashio::log.info "Checking for existing certificates for ${PROXY_DOMAIN}..."
-                # Discover existing certs
+                # Dynamic discovery: Find the actual path (handles -0001 suffixes). 
+                # We add '|| true' inside the subshell to prevent exit on no match.
                 certbot certificates ${CB_OPTS} > /tmp/certs.txt 2>/dev/null || true
                 FOUND_PATH=$(grep -A 12 "Certificate Name: ${PROXY_DOMAIN}" /tmp/certs.txt 2>/dev/null | grep "Certificate Path:" | sed 's/.*Certificate Path: //' | xargs || true)
                 
                 if [ -n "$FOUND_PATH" ] && [ -r "$FOUND_PATH" ]; then
-                    bashio::log.info "Found existing Let's Encrypt certificate. Ensuring it is up to date..."
-                    # Try to renew before starting. We remove --quiet to see errors if it fails.
-                    certbot renew ${CB_OPTS} --non-interactive --preferred-challenges http || bashio::log.warning "Renewal check failed. Continuing with existing certs."
-                    
+                    bashio::log.info "Found existing Let's Encrypt certificate. (Background monitor will handle updates)"
                     LE_CERT_FILE="$FOUND_PATH"
                     LE_KEY_FILE=$(dirname "$FOUND_PATH")/privkey.pem
                 else
-                    bashio::log.info "Certificate not found or invalid. Requesting from Let's Encrypt..."
-                    # We removed --quiet to allow the user to see WHY the request fails (e.g. port 80 blocked)
+                    bashio::log.info "Certificate not found or invalid. Requesting initial certificate..."
+                    # We keep this blocking as we need a cert to start the HTTPS listener
                     certbot certonly --standalone \
                         ${CB_OPTS} \
                         --non-interactive --agree-tos --email "${LE_EMAIL}" \
                         -d "${PROXY_DOMAIN}" \
                         --preferred-challenges http \
-                        --keep-until-expiring || bashio::log.error "Certbot request failed! Check that Port 80 is forwarded and your domain is correct."
+                        --keep-until-expiring || bashio::log.error "Initial Certbot request failed! Check Port 80 forwarding."
                     
                     # Re-discover after attempt
                     certbot certificates ${CB_OPTS} > /tmp/certs.txt 2>/dev/null || true
@@ -310,6 +308,7 @@ if [ "$USE_LETSENCRYPT" = "true" ]; then
             # Renew if needed and reload Squid if a new cert is deployed
             if certbot renew ${CB_OPTS} \
                 --non-interactive \
+                --verbose \
                 --preferred-challenges http \
                 --deploy-hook "echo 'Certificates updated. Reloading Squid...'; squid -k reconfigure -f /tmp/squid.conf"; then
                 bashio::log.info "Certificate renewal check completed successfully."
