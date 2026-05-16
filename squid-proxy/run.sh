@@ -250,10 +250,10 @@ http_access allow manager localhost
 http_access deny manager
 
 # Deny requests to certain unsafe ports
-http_access deny !Safe_ports
+#http_access deny !Safe_ports
 
 # Deny CONNECT to other than secure SSL ports
-http_access deny CONNECT !SSL_ports
+#http_access deny CONNECT !SSL_ports
 
 ${NETWORK_ACL_LINES}
 
