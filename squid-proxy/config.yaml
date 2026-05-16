@@ -9,6 +9,7 @@ ingress: true
 ingress_port: 8099
 panel_icon: mdi:arrow-decision-outline
 map:
+  - ssl
   - data
 host_network: false
 host_ipc: false
@@ -42,6 +43,8 @@ options:
   enable_https: false
   use_letsencrypt: false
   letsencrypt_email: ""
+  tls_crt_path: ""
+  tls_key_path: ""
   proxy_user: "squidadmin"
   proxy_password: ""
   proxy_domain: "homeassistant.local"
@@ -49,7 +52,7 @@ options:
   allowed_networks:
     - 192.168.0.0/16
     - 172.16.0.0/12
-    - 10.0.0.0/8  
+    - 10.0.0.0/8
   cache_enabled: false
   cache_disk_size_mb: 512
   cache_max_object_size_mb: 10
@@ -59,6 +62,8 @@ schema:
   enable_https: bool
   use_letsencrypt: bool
   letsencrypt_email: str?
+  tls_crt_path: str?
+  tls_key_path: str?
   proxy_user: "match(^[a-zA-Z0-9_-]{8,32}$)"
   proxy_password: "match(^.{8,64}$)"
   proxy_domain: str

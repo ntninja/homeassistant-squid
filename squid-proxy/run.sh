@@ -3,12 +3,14 @@
 echo "Starting Squid Proxy Add-on..."
 
 # Core Configuration
-DEBUG_MODE=$(bashio::config 'debug')
-ENABLE_HTTP=$(bashio::config 'enable_http')
-ENABLE_HTTPS=$(bashio::config 'enable_https')
-USE_LETSENCRYPT=$(bashio::config 'use_letsencrypt')
-LE_EMAIL=$(bashio::config 'letsencrypt_email')
-PROXY_DOMAIN=$(bashio::config 'proxy_domain')
+DEBUG_MODE="$(bashio::config 'debug')"
+ENABLE_HTTP="$(bashio::config 'enable_http')"
+ENABLE_HTTPS="$(bashio::config 'enable_https')"
+USE_LETSENCRYPT="$(bashio::config 'use_letsencrypt')"
+TLS_CRT_PATH="$(bashio::config 'tls_crt_path')"
+TLS_KEY_PATH="$(bashio::config 'tls_key_path')"
+LE_EMAIL="$(bashio::config 'letsencrypt_email')"
+PROXY_DOMAIN="$(bashio::config 'proxy_domain')"
 HTTPS_LISTENER=""
 
 SQUID_CERT="/tmp/squid.crt"
@@ -22,7 +24,7 @@ chmod -R 755 /data/letsencrypt
 chown -R squid:squid /data/self-signed
 
 if [ "$ENABLE_HTTPS" = "true" ]; then
-    if [ "$PROXY_DOMAIN" = "homeassistant.local" ] || [ -z "$PROXY_DOMAIN" ]; then
+    if ( [ "$PROXY_DOMAIN" = "homeassistant.local" ] || [ -z "$PROXY_DOMAIN" ] ) && [ "$USE_LETSENCRYPT" = "true" ]; then
         bashio::log.warning "HTTPS Proxy enabled but no valid Domain provided. Falling back to HTTP only."
         ENABLE_HTTPS="false"
     else
@@ -82,10 +84,17 @@ if [ "$ENABLE_HTTPS" = "true" ]; then
                     USE_LETSENCRYPT="false"
                 fi
             fi
-        fi
 
-        # --- MODE B: Self-Signed (Fallback or Default) ---
-        if [ "$USE_LETSENCRYPT" != "true" ]; then
+        # --- MODE B: Self-Signed (User-Supplied) ---
+        elif [ -n "$TLS_CRT_PATH" ] && [ -n "$TLS_KEY_PATH" ]; then
+            echo "Mode: User-Supplied Certificate"
+            
+            # Link to runtime path
+            ln -sf "/ssl/${TLS_CRT_PATH}" "${SQUID_CERT}"
+            ln -sf "/ssl/${TLS_KEY_PATH}" "${SQUID_KEY}"
+
+        # --- MODE C: Self-Signed (Fallback) ---
+        else
             echo "Mode: Self-Signed Certificate"
             
             SELF_CERT_DIR="/data/self-signed"

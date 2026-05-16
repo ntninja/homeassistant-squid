@@ -11,6 +11,12 @@ configuration:
   letsencrypt_email:
     name: "Registration Email"
     description: "Email address for Let's Encrypt registration and expiry notifications."
+  tls_crt_path:
+    name: "TLS Certificate path"
+    description: "Path relative to /ssl of local user-supplied TLS certificate."
+  tls_key_path:
+    name: "TLS Key path"
+    description: "Path relative to /ssl of key file for local user-supplied TLS certificate."
   allowed_networks:
     name: "Allowed Networks"
     description: "List of IP ranges (CIDR) allowed to use the proxy if 'Allow All' is disabled."
